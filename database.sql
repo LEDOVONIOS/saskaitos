@@ -1,0 +1,54 @@
+-- numbers with counters (one row per canonical number)
+CREATE TABLE IF NOT EXISTS numbers (
+  id BIGINT UNSIGNED PRIMARY KEY,
+  e164 VARCHAR(16) NOT NULL UNIQUE,    -- '3706xxxxxxx' (no plus)
+  local06 VARCHAR(16) NOT NULL,        -- '06xxxxxxx'
+  views INT UNSIGNED NOT NULL DEFAULT 0,
+  last_checked DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX (last_checked),
+  INDEX (views)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- comments for numbers
+CREATE TABLE IF NOT EXISTS comments (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  number_id BIGINT UNSIGNED NOT NULL,
+  author VARCHAR(80) NULL,
+  body TEXT NOT NULL,
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  ip VARBINARY(16) NULL,
+  user_agent VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (number_id),
+  INDEX (status, created_at),
+  CONSTRAINT fk_comments_number FOREIGN KEY (number_id) REFERENCES numbers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- admin users
+CREATE TABLE IF NOT EXISTS admins (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(191) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- contact/number removal requests
+CREATE TABLE IF NOT EXISTS contacts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NULL,
+  email VARCHAR(191) NULL,
+  number VARCHAR(32) NULL,
+  message TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- simple throttle
+CREATE TABLE IF NOT EXISTS throttles (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  ip VARBINARY(16) NOT NULL,
+  action VARCHAR(50) NOT NULL, -- 'search','comment'
+  occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX ip_action (ip, action, occurred_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
